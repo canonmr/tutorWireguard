@@ -113,6 +113,47 @@
         .diagram-container svg {
             overflow: visible;
         }
+        .tab-group {
+            background-color: #f9fafb;
+            border-radius: 1rem;
+            border: 1px solid #e5e7eb;
+            padding: 1.5rem;
+        }
+        .tab-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .tab-button {
+            padding: 0.5rem 1.25rem;
+            border-radius: 9999px;
+            background-color: #e5e7eb;
+            color: #374151;
+            font-weight: 600;
+            transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .tab-button:hover {
+            background-color: #d1d5db;
+        }
+        .tab-button.active {
+            background-color: #3b82f6;
+            color: #ffffff;
+            box-shadow: 0 12px 25px -10px rgba(59, 130, 246, 0.6);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .info-card {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px -15px rgba(15, 23, 42, 0.25);
+            padding: 1.25rem;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -337,36 +378,362 @@ docker-compose logs -f</span></code></pre>
                 </svg>
             </div>
             <div class="step-content" id="content-mikrotik-config">
-                <p class="mb-4">Tambahkan interface Wireguard, peer ke VPS, dan atur rute statis di setiap Mikrotik.</p>
-                <div class="prose max-w-none">
-                    <h3>Langkah 1: Konfigurasi Client di wg-easy</h3>
-                    <p>Akses antarmuka web di <code>http://[VPS_IP]:51821</code> untuk membuat dan mengunduh konfigurasi klien untuk setiap lokasi.</p>
-                    <h3>Langkah 2: Konfigurasi Mikrotik Lokasi Pertama</h3>
-                    <h4>A. Buat Interface Wireguard di Mikrotik</h4>
-                    <div class="code-block mb-4">
-                        <pre><code><span id="code-mikrotik-iface">/interface wireguard add listen-port=51820 mtu=1420 name=wg-site2site private-key="[PRIVATE_KEY_DARI_CONFIG_LOKASI_UTAMA]"</span></code></pre>
-                        <button class="copy-btn" onclick="copyCode('code-mikrotik-iface')">Salin</button>
+                <p class="mb-6 text-gray-700">Gunakan panduan ini untuk menyelaraskan konfigurasi client di wg-easy dengan dua perangkat Mikrotik sehingga kedua lokasi dapat saling berkomunikasi secara aman.</p>
+                <div class="tab-group" data-tab-group="mikrotik">
+                    <div class="tab-buttons">
+                        <button class="tab-button active" data-tab="client">Konfigurasi Client di wg-easy</button>
+                        <button class="tab-button" data-tab="lokasi1">Konfigurasi Mikrotik Lokasi Pertama</button>
+                        <button class="tab-button" data-tab="lokasi2">Konfigurasi Mikrotik Lokasi Kedua</button>
                     </div>
-                    <h4>B. Assign IP Address ke Interface</h4>
-                    <div class="code-block mb-4">
-                        <pre><code><span id="code-mikrotik-ip">/ip address add address=10.8.0.2/24 interface=wg-site2site comment="Wireguard-Site2Site-IP"</span></code></pre>
-                        <button class="copy-btn" onclick="copyCode('code-mikrotik-ip')">Salin</button>
+
+                    <div class="tab-content active space-y-8" data-tab-content="client" id="tab-client">
+                        <div>
+                            <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 1: Akses Dashboard wg-easy</h3>
+                            <ol class="list-decimal ml-6 space-y-2 text-gray-700">
+                                <li>Buka <code>http://[VPS_IP]:51821</code> di browser Anda.</li>
+                                <li>Masukkan password administrator yang didefinisikan pada <code>docker-compose.yml</code>.</li>
+                                <li>Pastikan dashboard menampilkan interface <strong>wg0</strong> dengan daftar client kosong atau sesuai kebutuhan.</li>
+                            </ol>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 2: Membuat Client untuk Tiap Lokasi</h3>
+                            <div class="grid gap-6 md:grid-cols-2">
+                                <div class="info-card">
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-2">Client Lokasi Pertama</h4>
+                                    <ol class="list-decimal ml-6 space-y-2 text-sm text-gray-700">
+                                        <li>Klik tombol <strong>Add Client</strong>.</li>
+                                        <li>Isi nama <strong>Lokasi-Utama</strong>; IP akan otomatis diberikan (umumnya <code>10.8.0.2</code>).</li>
+                                        <li>Tekan <strong>Create</strong> dan pastikan client muncul di daftar.</li>
+                                    </ol>
+                                </div>
+                                <div class="info-card">
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-2">Client Lokasi Kedua</h4>
+                                    <ol class="list-decimal ml-6 space-y-2 text-sm text-gray-700">
+                                        <li>Pilih <strong>Add Client</strong> sekali lagi.</li>
+                                        <li>Masukkan nama <strong>Lokasi-Cabang</strong>; IP biasanya <code>10.8.0.4</code>.</li>
+                                        <li>Tekan <strong>Create</strong> untuk menyimpan client kedua.</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 3: Atur Allowed IPs</h3>
+                            <p class="text-gray-700 mb-4">Edit masing-masing client dan ikuti daftar bertahap berikut untuk memastikan rute site-to-site tersusun dengan benar.</p>
+                            <div class="grid gap-6 md:grid-cols-2">
+                                <div class="info-card space-y-4">
+                                    <h4 class="text-lg font-semibold text-blue-600">Client Lokasi-Utama</h4>
+                                    <ol class="list-decimal ml-6 space-y-2 text-sm text-gray-700">
+                                        <li>Klik ikon <strong>Edit</strong> (pensil).</li>
+                                        <li>Pada <strong>Allowed IPs</strong>, isi nilai berikut.</li>
+                                        <li>Di bagian <strong>Server Allowed IPs</strong>, masukkan subnet LAN lokasi utama.</li>
+                                        <li>Pilih <strong>Save</strong> untuk menyimpan perubahan.</li>
+                                    </ol>
+                                    <div class="grid gap-3 md:grid-cols-2">
+                                        <div class="code-block">
+                                            <h4>Allowed IPs</h4>
+                                            <pre><code><span id="code-allowed-lokasi1">10.8.0.0/24</span></code></pre>
+                                            <button class="copy-btn" onclick="copyCode('code-allowed-lokasi1')">Salin</button>
+                                        </div>
+                                        <div class="code-block">
+                                            <h4>Server Allowed IPs</h4>
+                                            <pre><code><span id="code-server-allowed-lokasi1">192.168.110.0/24</span></code></pre>
+                                            <button class="copy-btn" onclick="copyCode('code-server-allowed-lokasi1')">Salin</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="info-card space-y-4">
+                                    <h4 class="text-lg font-semibold text-blue-600">Client Lokasi-Cabang</h4>
+                                    <ol class="list-decimal ml-6 space-y-2 text-sm text-gray-700">
+                                        <li>Klik ikon <strong>Edit</strong> pada client.</li>
+                                        <li>Isi <strong>Allowed IPs</strong> dengan network Wireguard.</li>
+                                        <li>Set <strong>Server Allowed IPs</strong> ke subnet LAN lokasi cabang.</li>
+                                        <li>Simpan perubahan dengan menekan <strong>Save</strong>.</li>
+                                    </ol>
+                                    <div class="grid gap-3 md:grid-cols-2">
+                                        <div class="code-block">
+                                            <h4>Allowed IPs</h4>
+                                            <pre><code><span id="code-allowed-lokasi2">10.8.0.0/24</span></code></pre>
+                                            <button class="copy-btn" onclick="copyCode('code-allowed-lokasi2')">Salin</button>
+                                        </div>
+                                        <div class="code-block">
+                                            <h4>Server Allowed IPs</h4>
+                                            <pre><code><span id="code-server-allowed-lokasi2">192.168.113.0/24</span></code></pre>
+                                            <button class="copy-btn" onclick="copyCode('code-server-allowed-lokasi2')">Salin</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 4: Unduh dan Audit Konfigurasi</h3>
+                            <div class="grid gap-6 md:grid-cols-2">
+                                <div class="info-card space-y-3">
+                                    <h4 class="text-lg font-semibold text-gray-800">Config Lokasi Pertama</h4>
+                                    <ol class="list-decimal ml-6 space-y-2 text-sm text-gray-700">
+                                        <li>Klik ikon <strong>Download</strong> pada client <strong>Lokasi-Utama</strong>.</li>
+                                        <li>Simpan sebagai <code>lokasi-utama.conf</code> dan catat nilai penting berikut.</li>
+                                    </ol>
+                                    <div class="code-block">
+                                        <h4>Potongan Konfigurasi</h4>
+                                        <pre><code><span id="code-config-lokasi1">[Interface]
+PrivateKey = [PRIVATE_KEY_LOKASI_UTAMA]
+Address = 10.8.0.2/24
+
+[Peer]
+PublicKey = [SERVER_PUBLIC_KEY]
+PresharedKey = [PRESHARED_KEY_LOKASI_UTAMA]
+Endpoint = your-domain.com:51820
+AllowedIPs = 10.8.0.0/24, 192.168.113.0/24</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-config-lokasi1')">Salin</button>
+                                    </div>
+                                </div>
+                                <div class="info-card space-y-3">
+                                    <h4 class="text-lg font-semibold text-gray-800">Config Lokasi Kedua</h4>
+                                    <ol class="list-decimal ml-6 space-y-2 text-sm text-gray-700">
+                                        <li>Download client <strong>Lokasi-Cabang</strong> sebagai <code>lokasi-cabang.conf</code>.</li>
+                                        <li>Pastikan detail berikut tersimpan.</li>
+                                    </ol>
+                                    <div class="code-block">
+                                        <h4>Potongan Konfigurasi</h4>
+                                        <pre><code><span id="code-config-lokasi2">[Interface]
+PrivateKey = [PRIVATE_KEY_LOKASI_CABANG]
+Address = 10.8.0.4/24
+
+[Peer]
+PublicKey = [SERVER_PUBLIC_KEY]
+PresharedKey = [PRESHARED_KEY_LOKASI_CABANG]
+Endpoint = your-domain.com:51820
+AllowedIPs = 10.8.0.0/24, 192.168.110.0/24</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-config-lokasi2')">Salin</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 5: Verifikasi dari VPS</h3>
+                            <p class="text-gray-700 mb-3">Gunakan perintah berikut untuk memastikan kedua client tercatat dan Allowed IPs sudah benar.</p>
+                            <div class="code-block">
+                                <h4>Verifikasi Peer di wg-easy</h4>
+                                <pre><code><span id="code-wg-show">docker exec wg-easy wg show
+
+# Output yang diharapkan:
+# peer: [PUBLIC_KEY_LOKASI_UTAMA]
+#   allowed ips: 10.8.0.2/32, 192.168.110.0/24
+# peer: [PUBLIC_KEY_LOKASI_CABANG]
+#   allowed ips: 10.8.0.4/32, 192.168.113.0/24</span></code></pre>
+                                <button class="copy-btn" onclick="copyCode('code-wg-show')">Salin</button>
+                            </div>
+                        </div>
                     </div>
-                    <h4>C. Tambah Peer & Routing</h4>
-                    <div class="code-block">
-                        <pre><code><span id="code-mikrotik-peer">/interface wireguard peers add allowed-address=0.0.0.0/0,::/0 endpoint-address=your-domain.com endpoint-port=51820 interface=wg-site2site public-key="[SERVER_PUBLIC_KEY]" persistent-keepalive=25s comment="VPS-Server"
-/ip route add dst-address=192.168.113.0/24 gateway=wg-site2site distance=1 comment="to-Lokasi-Cabang"</span></code></pre>
-                        <button class="copy-btn" onclick="copyCode('code-mikrotik-peer')">Salin</button>
+
+                    <div class="tab-content space-y-8" data-tab-content="lokasi1" id="tab-lokasi1">
+                        <div class="space-y-6 text-gray-700">
+                            <div>
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 1: Backup &amp; Validasi Router</h3>
+                                <p class="mb-3">Sebelum melakukan perubahan, backup konfigurasi existing dan cek kesiapan perangkat.</p>
+                                <div class="code-block mb-4">
+                                    <h4>Backup Konfigurasi</h4>
+                                    <pre><code><span id="code-backup-lokasi1">/export file=backup-pre-wireguard-lokasi1
+/certificate export-certificate numbers=0,1,2,3</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-backup-lokasi1')">Salin</button>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Verifikasi Sistem</h4>
+                                    <pre><code><span id="code-verify-sistem-lokasi1">/system resource print
+/interface print
+/ip route print</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-verify-sistem-lokasi1')">Salin</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 2: Buat Interface Wireguard</h3>
+                                <ol class="list-decimal ml-6 space-y-2">
+                                    <li>Tambahkan interface Wireguard baru dengan private key dari file <code>lokasi-utama.conf</code>.</li>
+                                    <li>Assign IP <code>10.8.0.2/24</code> ke interface tersebut.</li>
+                                    <li>Verifikasi interface dan IP sudah aktif.</li>
+                                </ol>
+                                <div class="grid gap-4 md:grid-cols-3 mt-4">
+                                    <div class="code-block">
+                                        <h4>Tambah Interface</h4>
+                                        <pre><code><span id="code-interface-lokasi1">/interface wireguard add listen-port=51820 mtu=1420 name=wg-site2site private-key="[PRIVATE_KEY_DARI_CONFIG_LOKASI_UTAMA]"</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-interface-lokasi1')">Salin</button>
+                                    </div>
+                                    <div class="code-block">
+                                        <h4>Assign IP</h4>
+                                        <pre><code><span id="code-ip-lokasi1">/ip address add address=10.8.0.2/24 interface=wg-site2site comment="Wireguard-Site2Site-IP"</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-ip-lokasi1')">Salin</button>
+                                    </div>
+                                    <div class="code-block">
+                                        <h4>Verifikasi</h4>
+                                        <pre><code><span id="code-verify-interface-lokasi1">/interface wireguard print
+/ip address print where interface=wg-site2site</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-verify-interface-lokasi1')">Salin</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 3: Tambahkan Peer ke VPS</h3>
+                                <p class="mb-3">Gunakan public key VPS dan preshared key dari konfigurasi wg-easy.</p>
+                                <div class="code-block">
+                                    <h4>Konfigurasi Peer</h4>
+                                    <pre><code><span id="code-peer-lokasi1">/interface wireguard peers add allowed-address=0.0.0.0/0,::/0 endpoint-address=your-domain.com endpoint-port=51820 interface=wg-site2site public-key="[SERVER_PUBLIC_KEY]" preshared-key="[PRESHARED_KEY_LOKASI_UTAMA]" persistent-keepalive=25s comment="VPS-Server"</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-peer-lokasi1')">Salin</button>
+                                </div>
+                                <div class="code-block mt-4">
+                                    <h4>Verifikasi Peer</h4>
+                                    <pre><code><span id="code-verify-peer-lokasi1">/interface wireguard peers print detail</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-verify-peer-lokasi1')">Salin</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 4: Routing</h3>
+                                <ol class="list-decimal ml-6 space-y-2">
+                                    <li>Buat rute ke subnet lokasi cabang.</li>
+                                    <li>Tambahkan rute ke network manajemen Wireguard.</li>
+                                    <li>Pastikan tabel routing sudah memuat entri baru.</li>
+                                </ol>
+                                <div class="grid gap-4 md:grid-cols-3 mt-4">
+                                    <div class="code-block">
+                                        <h4>Route ke Cabang</h4>
+                                        <pre><code><span id="code-route-lokasi1">/ip route add dst-address=192.168.113.0/24 gateway=wg-site2site distance=1 comment="to-Lokasi-Cabang-via-Wireguard"</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-route-lokasi1')">Salin</button>
+                                    </div>
+                                    <div class="code-block">
+                                        <h4>Route Manajemen</h4>
+                                        <pre><code><span id="code-route-wg-lokasi1">/ip route add dst-address=10.8.0.0/24 gateway=wg-site2site distance=1 comment="Wireguard-Management-Network"</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-route-wg-lokasi1')">Salin</button>
+                                    </div>
+                                    <div class="code-block">
+                                        <h4>Verifikasi Routing</h4>
+                                        <pre><code><span id="code-verify-route-lokasi1">/ip route print where gateway=wg-site2site</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-verify-route-lokasi1')">Salin</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 5: Firewall &amp; NAT</h3>
+                                <p class="mb-3">Buka akses yang diperlukan sambil tetap menjaga rule existing.</p>
+                                <div class="code-block">
+                                    <h4>Rule Firewall Wireguard</h4>
+                                    <pre><code><span id="code-firewall-lokasi1">/ip firewall filter add action=accept chain=forward connection-state=established,related comment="allow-established-related" place-before=0
+/ip firewall filter add action=accept chain=forward in-interface=wg-site2site comment="allow-from-wireguard" place-before=0
+/ip firewall filter add action=accept chain=forward out-interface=wg-site2site comment="allow-to-wireguard" place-before=0
+/ip firewall filter add action=accept chain=input in-interface=wg-site2site comment="allow-wg-to-router" place-before=0
+/ip firewall nat add action=accept chain=srcnat src-address=10.8.0.0/24 comment="bypass-nat-for-wireguard" place-before=0</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-firewall-lokasi1')">Salin</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 6: Testing Awal</h3>
+                                <div class="code-block">
+                                    <h4>Ping &amp; Status</h4>
+                                    <pre><code><span id="code-test-lokasi1">/ping 10.8.0.1 count=5
+/interface wireguard print</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-test-lokasi1')">Salin</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <h3>Langkah 3: Konfigurasi Mikrotik Lokasi Kedua</h3>
-                    <p>Ulangi langkah-langkah di atas untuk lokasi kedua, sesuaikan IP dan kunci.</p>
-                    <h3>Langkah 4: Setup Routing di VPS</h3>
-                    <p><strong>Penting:</strong> Langkah ini wajib dilakukan untuk memungkinkan komunikasi antar-jaringan lokal. </p>
-                    <div class="code-block">
-                        <h4>Command Tambah Rute Statis di VPS</h4>
-                        <pre><code><span id="code-vps-routing">docker exec wg-easy ip route add 192.168.110.0/24 via 10.8.0.2
-docker exec wg-easy ip route add 192.168.113.0/24 via 10.8.0.4</span></code></pre>
-                        <button class="copy-btn" onclick="copyCode('code-vps-routing')">Salin</button>
+
+                    <div class="tab-content space-y-8" data-tab-content="lokasi2" id="tab-lokasi2">
+                        <div class="space-y-6 text-gray-700">
+                            <div>
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 1: Backup &amp; Validasi Router Lokasi Kedua</h3>
+                                <p class="mb-3">Ulangi prosedur backup sebelum melakukan perubahan di cabang.</p>
+                                <div class="code-block">
+                                    <h4>Backup Konfigurasi</h4>
+                                    <pre><code><span id="code-backup-lokasi2">/export file=backup-pre-wireguard-lokasi2</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-backup-lokasi2')">Salin</button>
+                                </div>
+                                <div class="code-block mt-4">
+                                    <h4>Verifikasi Sistem</h4>
+                                    <pre><code><span id="code-verify-sistem-lokasi2">/system resource print
+/interface print</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-verify-sistem-lokasi2')">Salin</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 2: Interface &amp; IP Wireguard</h3>
+                                <ol class="list-decimal ml-6 space-y-2">
+                                    <li>Gunakan private key dari <code>lokasi-cabang.conf</code> untuk membuat interface.</li>
+                                    <li>Pasangkan alamat <code>10.8.0.4/24</code> ke interface Wireguard.</li>
+                                </ol>
+                                <div class="grid gap-4 md:grid-cols-3 mt-4">
+                                    <div class="code-block">
+                                        <h4>Tambah Interface</h4>
+                                        <pre><code><span id="code-interface-lokasi2">/interface wireguard add listen-port=51820 mtu=1420 name=wg-site2site private-key="[PRIVATE_KEY_DARI_CONFIG_LOKASI_CABANG]"</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-interface-lokasi2')">Salin</button>
+                                    </div>
+                                    <div class="code-block">
+                                        <h4>Assign IP</h4>
+                                        <pre><code><span id="code-ip-lokasi2">/ip address add address=10.8.0.4/24 interface=wg-site2site comment="Wireguard-Site2Site-IP"</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-ip-lokasi2')">Salin</button>
+                                    </div>
+                                    <div class="code-block">
+                                        <h4>Verifikasi</h4>
+                                        <pre><code><span id="code-verify-interface-lokasi2">/interface wireguard print
+/ip address print where interface=wg-site2site</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-verify-interface-lokasi2')">Salin</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 3: Peer &amp; Routing</h3>
+                                <p class="mb-3">Sesuaikan endpoint sama seperti lokasi pertama, namun gunakan preshared key dari client cabang.</p>
+                                <div class="code-block">
+                                    <h4>Konfigurasi Peer</h4>
+                                    <pre><code><span id="code-peer-lokasi2">/interface wireguard peers add allowed-address=0.0.0.0/0,::/0 endpoint-address=your-domain.com endpoint-port=51820 interface=wg-site2site public-key="[SERVER_PUBLIC_KEY]" preshared-key="[PRESHARED_KEY_LOKASI_CABANG]" persistent-keepalive=25s comment="VPS-Server"</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-peer-lokasi2')">Salin</button>
+                                </div>
+                                <div class="grid gap-4 md:grid-cols-2 mt-4">
+                                    <div class="code-block">
+                                        <h4>Routing ke Lokasi Utama</h4>
+                                        <pre><code><span id="code-route-lokasi2">/ip route add dst-address=192.168.110.0/24 gateway=wg-site2site distance=1 comment="to-Lokasi-Utama-via-Wireguard"</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-route-lokasi2')">Salin</button>
+                                    </div>
+                                    <div class="code-block">
+                                        <h4>Routing Network Wireguard</h4>
+                                        <pre><code><span id="code-route-wg-lokasi2">/ip route add dst-address=10.8.0.0/24 gateway=wg-site2site distance=1 comment="Wireguard-Management-Network"</span></code></pre>
+                                        <button class="copy-btn" onclick="copyCode('code-route-wg-lokasi2')">Salin</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 4: Firewall &amp; NAT</h3>
+                                <p class="mb-3">Gunakan rule identik seperti lokasi pertama untuk memastikan trafik dapat melewati terowongan.</p>
+                                <div class="code-block">
+                                    <h4>Rule Firewall Cabang</h4>
+                                    <pre><code><span id="code-firewall-lokasi2">/ip firewall filter add action=accept chain=forward connection-state=established,related comment="allow-established-related" place-before=0
+/ip firewall filter add action=accept chain=forward in-interface=wg-site2site comment="allow-from-wireguard" place-before=0
+/ip firewall filter add action=accept chain=forward out-interface=wg-site2site comment="allow-to-wireguard" place-before=0
+/ip firewall filter add action=accept chain=input in-interface=wg-site2site comment="allow-wg-to-router" place-before=0
+/ip firewall nat add action=accept chain=srcnat src-address=10.8.0.0/24 comment="bypass-nat-for-wireguard" place-before=0</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-firewall-lokasi2')">Salin</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-xl font-semibold text-blue-600 mb-3">Langkah 5: Testing</h3>
+                                <div class="code-block">
+                                    <h4>Uji Konektivitas</h4>
+                                    <pre><code><span id="code-test-lokasi2">/ping 10.8.0.1 count=5
+/ping 10.8.0.2 count=5</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-test-lokasi2')">Salin</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -520,7 +887,9 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
 
         // Copy code to clipboard
         function copyCode(id) {
-            const code = document.getElementById(id).innerText;
+            const codeElement = document.getElementById(id);
+            if (!codeElement) return;
+            const code = codeElement.innerText;
             const textarea = document.createElement('textarea');
             textarea.value = code;
             document.body.appendChild(textarea);
@@ -528,12 +897,41 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
             document.execCommand('copy');
             document.body.removeChild(textarea);
 
-            const button = document.querySelector(`#${id}`).nextElementSibling;
-            const originalText = button.innerText;
-            button.innerText = 'Tersalin!';
-            setTimeout(() => {
-                button.innerText = originalText;
-            }, 2000);
+            const container = codeElement.closest('.code-block');
+            const button = container ? container.querySelector('.copy-btn') : null;
+            if (button) {
+                const originalText = button.innerText;
+                button.innerText = 'Tersalin!';
+                setTimeout(() => {
+                    button.innerText = originalText;
+                }, 2000);
+            }
+        }
+
+        // Tabs handling inside accordion panels
+        function initTabs() {
+            const tabGroups = document.querySelectorAll('.tab-group');
+            tabGroups.forEach(group => {
+                const buttons = group.querySelectorAll('.tab-button');
+                const contents = group.querySelectorAll('.tab-content');
+
+                buttons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const target = button.getAttribute('data-tab');
+
+                        buttons.forEach(btn => btn.classList.remove('active'));
+                        button.classList.add('active');
+
+                        contents.forEach(content => {
+                            if (content.getAttribute('data-tab-content') === target) {
+                                content.classList.add('active');
+                            } else {
+                                content.classList.remove('active');
+                            }
+                        });
+                    });
+                });
+            });
         }
 
         // D3.js chart for VPN comparison
@@ -776,6 +1174,7 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
         
         // Initial setup on window load
         window.onload = function() {
+            initTabs();
             createComparisonChart();
             createNetworkTopology();
             createLatencyChart();
