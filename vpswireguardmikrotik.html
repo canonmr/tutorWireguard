@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorial Wireguard Site-to-Site Lengkap</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+        .section-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3b82f6;
+            padding-left: 1rem;
+        }
+        .step-card {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .step-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .step-header {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .step-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-out;
+            padding-top: 1rem;
+        }
+        .step-content.active {
+            max-height: 5000px; /* Adjusted for full content */
+            transition: max-height 0.7s ease-in;
+        }
+        .code-block {
+            background-color: #1f2937;
+            color: #e5e7eb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            overflow-x: auto;
+            position: relative;
+        }
+        .code-block h4 {
+            font-weight: 600;
+            color: #9ca3af;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #4b5563;
+            padding-bottom: 0.5rem;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #4b5563;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+        .copy-btn:hover {
+            background-color: #6b7280;
+        }
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin-top: 1.5rem;
+            background-color: #f9fafb;
+            border-radius: 0.75rem;
+            padding: 1rem;
+        }
+        .diagram-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background-color: #f9fafb;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            margin-top: 1.5rem;
+        }
+        .diagram-container svg {
+            overflow: visible;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="bg-blue-600 text-white py-12">
+        <div class="container text-center">
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-4 animate-fade-in">Panduan Lengkap: Membangun Site-to-Site VPN dengan Wireguard dan Mikrotik</h1>
+            <p class="text-xl md:text-2xl font-light opacity-90 animate-fade-in-up">Tutorial Interaktif dengan Visualisasi & Kode yang Dapat Disalin</p>
+        </div>
+    </div>
+
+    <div class="container mt-8">
+
+        <!-- Pengenalan -->
+        <div class="step-card">
+            <div class="step-header" onclick="toggleSection('intro')">
+                <span class="font-bold text-blue-600">1. Pengenalan Wireguard dan Manfaatnya</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 transform transition-transform duration-300 rotate-0" id="icon-intro">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+            </div>
+            <div class="step-content" id="content-intro">
+                <p class="mb-4">Wireguard adalah protokol VPN modern yang dirancang untuk menjadi sederhana, cepat, dan aman. Keunggulannya meliputi **performance superior**, **konfigurasi yang sederhana**, dan **cryptography modern**.</p>
+                <div class="diagram-container">
+                    <h4 class="font-semibold mb-4 text-center text-lg">Perbandingan Wireguard vs. VPN Tradisional</h4>
+                    <svg id="vpn-comparison" width="100%" height="100%" viewBox="0 0 800 300"></svg>
+                </div>
+                <div class="mt-4 prose max-w-none">
+                    <h3>Apa Itu Wireguard?</h3>
+                    <p>Wireguard adalah protokol VPN modern yang dirancang untuk menjadi sederhana, cepat, dan aman. Dikembangkan sebagai alternatif yang lebih efisien dibanding protokol VPN tradisional seperti IPSec atau OpenVPN, Wireguard menggunakan kriptografi modern dengan overhead yang minimal.</p>
+                    <h3>Mengapa Diperlukan?</h3>
+                    <p>Dalam era digital saat ini, banyak organisasi memiliki multiple lokasi yang memerlukan konektivitas aman antar-jaringan. Tantangan umum yang dihadapi:</p>
+                    <ul class="list-disc ml-6">
+                        <li><strong>Keterbatasan IP Publik</strong>: Provider internet residential (seperti Indihome) tidak menyediakan IP publik static</li>
+                        <li><strong>Biaya Dedicated Line</strong>: Koneksi MPLS atau dedicated line memiliki biaya tinggi</li>
+                        <li><strong>Keamanan Internet</strong>: Traffic antar-lokasi melalui internet publik memerlukan enkripsi</li>
+                        <li><strong>Kompleksitas Konfigurasi</strong>: Protokol VPN tradisional memerlukan setup yang rumit</li>
+                        <li><strong>Maintenance Overhead</strong>: Solusi proprietary memerlukan maintenance khusus</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Perencanaan Jaringan -->
+        <div class="step-card">
+            <div class="step-header" onclick="toggleSection('planning')">
+                <span class="font-bold text-blue-600">2. Persiapan dan Perencanaan Jaringan</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 transform transition-transform duration-300 rotate-0" id="icon-planning">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+            </div>
+            <div class="step-content" id="content-planning">
+                <p class="mb-4">Tahap ini penting untuk memastikan tidak ada konflik IP dan koneksi dapat terhubung dengan baik.</p>
+                <div class="diagram-container">
+                    <h4 class="font-semibold mb-4 text-center text-lg">Diagram Topologi VPN Site-to-Site</h4>
+                    <svg id="network-topology" width="100%" height="100%" viewBox="0 0 800 400"></svg>
+                </div>
+                <div class="mt-4 prose max-w-none">
+                    <h3>Langkah 1: Inventarisasi Hardware Existing</h3>
+                    <h4>A. Survey Mikrotik di Setiap Lokasi</h4>
+                    <p><strong>Informasi yang Harus Dikumpulkan:</strong> Model, versi RouterOS (harus v7.x), CPU, RAM, interface, dan konfigurasi IP saat ini.</p>
+                    <div class="code-block">
+                        <h4>Command untuk Inventarisasi di Mikrotik</h4>
+                        <pre><code><span id="code-mikrotik-inventory">/system resource print
+/system package print
+/interface print
+/ip address print
+/ip route print
+/ip dhcp-server print
+/ip firewall filter print</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-mikrotik-inventory')">Salin</button>
+                    </div>
+                    <h4>B. Survey Router ISP di Setiap Lokasi</h4>
+                    <p>Informasi yang diperlukan: Brand/Model, IP WAN, DHCP Range, dan Port Forwarding.</p>
+                    <div class="code-block">
+                        <h4>Cara Mengakses Router ISP</h4>
+                        <pre><code><span id="code-isp-router"># Cek gateway default
+ipconfig /all    # Windows
+ip route show    # Linux</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-isp-router')">Salin</button>
+                    </div>
+                    <h3>Langkah 2: Inventarisasi VPS/Cloud Server</h3>
+                    <p>Pastikan VPS Anda memenuhi persyaratan minimum dan memiliki port yang diperlukan terbuka.</p>
+                    <h3>Langkah 3: Planning IP Address Scheme</h3>
+                    <p>Rencanakan subnet untuk jaringan Wireguard dan jaringan lokal di setiap lokasi untuk menghindari konflik.</p>
+                    <h3>Langkah 4: Dokumentasi Pre-Implementation</h3>
+                    <p>Buat diagram jaringan, checklist implementasi, dan rencana rollback untuk mempersiapkan diri.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Setup VPS -->
+        <div class="step-card">
+            <div class="step-header" onclick="toggleSection('vps-setup')">
+                <span class="font-bold text-blue-600">3. Setup VPS Wireguard (wg-easy)</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 transform transition-transform duration-300 rotate-0" id="icon-vps-setup">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+            </div>
+            <div class="step-content" id="content-vps-setup">
+                <p class="mb-4">Instalasi Docker dan wg-easy untuk manajemen server Wireguard yang mudah.</p>
+                <div class="prose max-w-none">
+                    <h3>Langkah 1: Persiapan VPS</h3>
+                    <h4>A. Initial Server Setup</h4>
+                    <div class="code-block">
+                        <h4>Command Instalasi dan Keamanan</h4>
+                        <pre><code><span id="code-vps-initial">apt update && apt upgrade -y
+apt install -y curl wget htop nano ufw fail2ban
+ufw allow ssh
+ufw allow 51820/udp
+ufw allow 51821/tcp
+ufw --force enable</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-vps-initial')">Salin</button>
+                    </div>
+                    <h4>B. Docker Installation</h4>
+                    <div class="code-block">
+                        <h4>Command Instalasi Docker</h4>
+                        <pre><code><span id="code-docker-install">curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-docker-install')">Salin</button>
+                    </div>
+                    <h3>Langkah 2: Konfigurasi wg-easy</h3>
+                    <div class="code-block">
+                        <h4>A. Docker Compose Configuration</h4>
+                        <pre><code><span id="code-vps-setup">version: '3.8'
+
+services:
+  wg-easy:
+    environment:
+      - WG_HOST=your-domain.com
+      - PASSWORD=YourSecurePassword123!
+      - WG_PORT=51820
+      - WG_DEFAULT_ADDRESS=10.8.0.x
+    image: ghcr.io/wg-easy/wg-easy:15
+    container_name: wg-easy
+    ports:
+      - "51820:51820/udp"
+      - "51821:51821/tcp"
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-vps-setup')">Salin</button>
+                    </div>
+                    <h3>Langkah 3: Deployment dan Testing</h3>
+                    <div class="code-block">
+                        <h4>Command untuk Deployment</h4>
+                        <pre><code><span id="code-vps-deploy">cd /opt/wireguard
+docker-compose up -d
+docker-compose ps
+docker-compose logs -f</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-vps-deploy')">Salin</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Konfigurasi Client & Mikrotik -->
+        <div class="step-card">
+            <div class="step-header" onclick="toggleSection('mikrotik-config')">
+                <span class="font-bold text-blue-600">4. Konfigurasi Client & Mikrotik</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 transform transition-transform duration-300 rotate-0" id="icon-mikrotik-config">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+            </div>
+            <div class="step-content" id="content-mikrotik-config">
+                <p class="mb-4">Tambahkan interface Wireguard, peer ke VPS, dan atur rute statis di setiap Mikrotik.</p>
+                <div class="prose max-w-none">
+                    <h3>Langkah 1: Konfigurasi Client di wg-easy</h3>
+                    <p>Akses antarmuka web di <code>http://[VPS_IP]:51821</code> untuk membuat dan mengunduh konfigurasi klien untuk setiap lokasi.</p>
+                    <h3>Langkah 2: Konfigurasi Mikrotik Lokasi Pertama</h3>
+                    <h4>A. Buat Interface Wireguard di Mikrotik</h4>
+                    <div class="code-block mb-4">
+                        <pre><code><span id="code-mikrotik-iface">/interface wireguard add listen-port=51820 mtu=1420 name=wg-site2site private-key="[PRIVATE_KEY_DARI_CONFIG_LOKASI_UTAMA]"</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-mikrotik-iface')">Salin</button>
+                    </div>
+                    <h4>B. Assign IP Address ke Interface</h4>
+                    <div class="code-block mb-4">
+                        <pre><code><span id="code-mikrotik-ip">/ip address add address=10.8.0.2/24 interface=wg-site2site comment="Wireguard-Site2Site-IP"</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-mikrotik-ip')">Salin</button>
+                    </div>
+                    <h4>C. Tambah Peer & Routing</h4>
+                    <div class="code-block">
+                        <pre><code><span id="code-mikrotik-peer">/interface wireguard peers add allowed-address=0.0.0.0/0,::/0 endpoint-address=your-domain.com endpoint-port=51820 interface=wg-site2site public-key="[SERVER_PUBLIC_KEY]" persistent-keepalive=25s comment="VPS-Server"
+/ip route add dst-address=192.168.113.0/24 gateway=wg-site2site distance=1 comment="to-Lokasi-Cabang"</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-mikrotik-peer')">Salin</button>
+                    </div>
+                    <h3>Langkah 3: Konfigurasi Mikrotik Lokasi Kedua</h3>
+                    <p>Ulangi langkah-langkah di atas untuk lokasi kedua, sesuaikan IP dan kunci.</p>
+                    <h3>Langkah 4: Setup Routing di VPS</h3>
+                    <p><strong>Penting:</strong> Langkah ini wajib dilakukan untuk memungkinkan komunikasi antar-jaringan lokal. </p>
+                    <div class="code-block">
+                        <h4>Command Tambah Rute Statis di VPS</h4>
+                        <pre><code><span id="code-vps-routing">docker exec wg-easy ip route add 192.168.110.0/24 via 10.8.0.2
+docker exec wg-easy ip route add 192.168.113.0/24 via 10.8.0.4</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-vps-routing')">Salin</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitoring & Troubleshooting -->
+        <div class="step-card">
+            <div class="step-header" onclick="toggleSection('troubleshooting')">
+                <span class="font-bold text-blue-600">5. Testing, Monitoring & Troubleshooting</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 transform transition-transform duration-300 rotate-0" id="icon-troubleshooting">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+            </div>
+            <div class="step-content" id="content-troubleshooting">
+                <p class="mb-4">Lakukan pengujian konektivitas secara menyeluruh dan pantau performa jaringan.</p>
+                <div class="chart-container">
+                    <h4 class="font-semibold mb-2 text-center">Simulasi Latensi VPN (ms)</h4>
+                    <svg id="latency-chart"></svg>
+                </div>
+                <div class="mt-4 prose max-w-none">
+                    <h3>Testing dan Verifikasi</h3>
+                    <div class="code-block mb-4">
+                        <h4>Test Konektivitas dari Mikrotik</h4>
+                        <pre><code><span id="code-mikrotik-test">/ping 192.168.113.1 count=5
+/tool traceroute address=192.168.113.1</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-mikrotik-test')">Salin</button>
+                    </div>
+                    <h3>Troubleshooting</h3>
+                    <p>Jika Anda mengalami masalah, gunakan perintah diagnostik berikut:</p>
+                    <div class="code-block mb-4">
+                        <h4>Peer Tidak Terhubung ke VPS</h4>
+                        <pre><code><span id="code-troubleshoot-1"># Di VPS
+docker exec wg-easy wg show
+
+# Di Mikrotik
+/interface wireguard peers print detail</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-troubleshoot-1')">Salin</button>
+                    </div>
+                    <div class="code-block mb-4">
+                        <h4>Ping ke VPS Berhasil tapi Site-to-Site Gagal</h4>
+                        <pre><code><span id="code-troubleshoot-2"># Cek routing di VPS container
+docker exec wg-easy ip route show</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-troubleshoot-2')">Salin</button>
+                    </div>
+                    <h3>Monitoring dan Maintenance</h3>
+                    <p>Automasi monitoring adalah kunci untuk memastikan stabilitas. Gunakan skrip-skrip berikut untuk memantau status, bandwidth, dan latensi secara rutin. </p>
+                    <div class="code-block mb-4">
+                        <h4>Skrip Health Check Harian</h4>
+                        <pre><code><span id="code-health-check">#!/bin/bash
+# File: /opt/scripts/wg-healthcheck.sh
+echo "=== Wireguard Health Check - $(date) ==="
+if docker ps | grep -q wg-easy; then
+    echo "✓ wg-easy container: RUNNING"
+else
+    echo "✗ wg-easy container: DOWN"
+    exit 1
+fi
+echo -e "\n=== Connectivity Test ==="
+if docker exec wg-easy ping -c 2 10.8.0.2 >/dev/null 2>&1; then
+    echo "✓ Lokasi pertama: REACHABLE"
+else
+    echo "✗ Lokasi pertama: UNREACHABLE"
+fi</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-health-check')">Salin</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Optimisasi dan Best Practices -->
+        <div class="step-card">
+            <div class="step-header" onclick="toggleSection('optimization')">
+                <span class="font-bold text-blue-600">6. Optimisasi dan Best Practices</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 transform transition-transform duration-300 rotate-0" id="icon-optimization">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+            </div>
+            <div class="step-content" id="content-optimization">
+                <p class="mb-4">Meningkatkan keamanan dan efisiensi untuk penggunaan produksi.</p>
+                <div class="prose max-w-none">
+                    <h3>Security Hardening</h3>
+                    <div class="code-block mb-4">
+                        <h4>Enhanced VPS Security</h4>
+                        <pre><code><span id="code-security-hardening"># Ubah port SSH
+sed -i 's/#Port 22/Port 2222/' /etc/ssh/sshd_config
+# Nonaktifkan autentikasi password
+sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+# Tambahkan jail fail2ban untuk Wireguard
+# ... (kode lengkap di file asli)
+systemctl restart sshd fail2ban</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-security-hardening')">Salin</button>
+                    </div>
+                    <h3>Scalability Planning</h3>
+                    <p>Rencanakan alokasi IP untuk penambahan situs di masa depan. Gunakan skrip untuk mempermudah proses.</p>
+                    <div class="code-block mb-4">
+                        <h4>Skrip untuk Menambahkan Situs Baru</h4>
+                        <pre><code><span id="code-add-site">#!/bin/bash
+# File: /opt/scripts/add-new-site.sh
+SITE_NAME=$1
+SITE_IP=$2
+SITE_SUBNET=$3
+if [ $# -ne 3 ]; then
+    echo "Usage: $0 &lt;site-name&gt; &lt;wireguard-ip&gt; &lt;local-subnet&gt;"
+    exit 1
+fi
+echo "Adding new site: $SITE_NAME"
+docker exec wg-easy ip route add $SITE_SUBNET via $SITE_IP</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-add-site')">Salin</button>
+                    </div>
+                    <h3>Integrasi dengan Infrastruktur Existing</h3>
+                    <p>Pelajari cara mengintegrasikan Wireguard dengan Active Directory, logging terpusat, dan SNMP.</p>
+                    <h3>Disaster Recovery Planning</h3>
+                    <p>Siapkan prosedur pemulihan untuk skenario terburuk.</p>
+                    <div class="code-block mb-4">
+                        <h4>Skrip Pemulihan Bencana</h4>
+                        <pre><code><span id="code-disaster-recovery">#!/bin/bash
+# File: /opt/scripts/wg-recovery.sh
+echo "=== Wireguard Disaster Recovery ==="
+docker-compose -f /opt/wireguard/docker-compose.yml down
+LATEST_BACKUP=$(ls -t /opt/backups/wireguard/wg-config-*.tar.gz | head -1)
+echo "Restoring from: $LATEST_BACKUP"
+tar -xzf $LATEST_BACKUP -C /
+docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
+                        <button class="copy-btn" onclick="copyCode('code-disaster-recovery')">Salin</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <footer class="bg-gray-800 text-white text-center py-4 mt-8">
+        <div class="container">
+            <p class="text-sm">Tutorial dibuat menggunakan konten dari file `wireguard_site2site_tutorial.md`.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Toggle sections
+        function toggleSection(id) {
+            const content = document.getElementById('content-' + id);
+            const icon = document.getElementById('icon-' + id);
+            if (content.classList.contains('active')) {
+                content.classList.remove('active');
+                icon.classList.remove('rotate-180');
+            } else {
+                content.classList.add('active');
+                icon.classList.add('rotate-180');
+            }
+        }
+
+        // Copy code to clipboard
+        function copyCode(id) {
+            const code = document.getElementById(id).innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            const button = document.querySelector(`#${id}`).nextElementSibling;
+            const originalText = button.innerText;
+            button.innerText = 'Tersalin!';
+            setTimeout(() => {
+                button.innerText = originalText;
+            }, 2000);
+        }
+
+        // D3.js chart for VPN comparison
+        function createComparisonChart() {
+            const data = [
+                { name: 'Wireguard', performance: 90, simplicity: 95, security: 85 },
+                { name: 'OpenVPN', performance: 65, simplicity: 60, security: 90 },
+                { name: 'IPSec', performance: 75, simplicity: 40, security: 95 }
+            ];
+
+            const width = 700;
+            const height = 250;
+            const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+            
+            const svg = d3.select("#vpn-comparison")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const x = d3.scaleBand()
+                .domain(data.map(d => d.name))
+                .range([0, width])
+                .padding(0.2);
+
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).tickSize(0))
+                .selectAll("text")
+                .attr("transform", "translate(0,10)")
+                .style("text-anchor", "middle")
+                .style("font-size", "14px");
+            
+            const y = d3.scaleLinear()
+                .domain([0, 100])
+                .range([height, 0]);
+
+            const yAxis = svg.append("g")
+                .call(d3.axisLeft(y).ticks(5).tickSizeOuter(0));
+            
+            svg.selectAll(".bar-performance")
+                .data(data)
+                .enter().append("rect")
+                .attr("class", "bar-performance")
+                .attr("x", d => x(d.name))
+                .attr("y", d => y(d.performance))
+                .attr("width", x.bandwidth() / 3)
+                .attr("height", d => height - y(d.performance))
+                .attr("fill", "#3b82f6")
+                .attr("rx", 5)
+                .attr("ry", 5);
+
+            svg.selectAll(".bar-simplicity")
+                .data(data)
+                .enter().append("rect")
+                .attr("class", "bar-simplicity")
+                .attr("x", d => x(d.name) + x.bandwidth() / 3)
+                .attr("y", d => y(d.simplicity))
+                .attr("width", x.bandwidth() / 3)
+                .attr("height", d => height - y(d.simplicity))
+                .attr("fill", "#60a5fa")
+                .attr("rx", 5)
+                .attr("ry", 5);
+
+            svg.selectAll(".bar-security")
+                .data(data)
+                .enter().append("rect")
+                .attr("class", "bar-security")
+                .attr("x", d => x(d.name) + (x.bandwidth() / 3) * 2)
+                .attr("y", d => y(d.security))
+                .attr("width", x.bandwidth() / 3)
+                .attr("height", d => height - y(d.security))
+                .attr("fill", "#93c5fd")
+                .attr("rx", 5)
+                .attr("ry", 5);
+
+            svg.append("circle").attr("cx",width-180).attr("cy",0).attr("r", 6).style("fill", "#3b82f6")
+            svg.append("circle").attr("cx",width-180).attr("cy",20).attr("r", 6).style("fill", "#60a5fa")
+            svg.append("circle").attr("cx",width-180).attr("cy",40).attr("r", 6).style("fill", "#93c5fd")
+            svg.append("text").attr("x", width-170).attr("y", 0).text("Performa").style("font-size", "15px").attr("alignment-baseline","middle")
+            svg.append("text").attr("x", width-170).attr("y", 20).text("Kemudahan Konfigurasi").style("font-size", "15px").attr("alignment-baseline","middle")
+            svg.append("text").attr("x", width-170).attr("y", 40).text("Keamanan").style("font-size", "15px").attr("alignment-baseline","middle")
+        }
+
+        // D3.js network topology
+        function createNetworkTopology() {
+            const links = [
+                { source: "Internet A", target: "Mikrotik A" },
+                { source: "Mikrotik A", target: "LAN A" },
+                { source: "Internet B", target: "Mikrotik B" },
+                { source: "Mikrotik B", target: "LAN B" },
+                { source: "VPS Wireguard", target: "Internet A" },
+                { source: "VPS Wireguard", target: "Internet B" }
+            ];
+
+            const nodes = [
+                { id: "Internet A", type: "internet", fx: 150, fy: 50 },
+                { id: "Mikrotik A", type: "router", fx: 150, fy: 200 },
+                { id: "LAN A", type: "lan", fx: 150, fy: 350 },
+                { id: "Internet B", type: "internet", fx: 650, fy: 50 },
+                { id: "Mikrotik B", type: "router", fx: 650, fy: 200 },
+                { id: "LAN B", type: "lan", fx: 650, fy: 350 },
+                { id: "VPS Wireguard", type: "vps", fx: 400, fy: 200 }
+            ];
+
+            const svg = d3.select("#network-topology");
+            const width = +svg.attr("viewBox").split(" ")[2];
+            const height = +svg.attr("viewBox").split(" ")[3];
+
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id).distance(100))
+                .force("charge", d3.forceManyBody().strength(-200))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .stop();
+
+            for (let i = 0; i < 300; ++i) simulation.tick();
+
+            const link = svg.append("g")
+                .attr("stroke", "#999")
+                .attr("stroke-opacity", 0.6)
+                .selectAll("line")
+                .data(links)
+                .join("line")
+                .attr("stroke-width", 2)
+                .attr("stroke", d => d.source.id === "VPS Wireguard" || d.target.id === "VPS Wireguard" ? "#10b981" : "#999");
+            
+            const node = svg.append("g")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1.5)
+                .selectAll("g")
+                .data(nodes)
+                .join("g");
+
+            node.append("circle")
+                .attr("r", 20)
+                .attr("fill", d => {
+                    if (d.type === "router") return "#3b82f6";
+                    if (d.type === "vps") return "#ef4444";
+                    return "#6b7280";
+                });
+            
+            node.append("text")
+                .attr("dy", "0.31em")
+                .attr("x", 25)
+                .text(d => d.id)
+                .style("font-size", "14px")
+                .style("fill", "#1f2937");
+
+            function ticked() {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+                node
+                    .attr("transform", d => `translate(${d.x},${d.y})`);
+            }
+            simulation.on("tick", ticked);
+            ticked(); // Initial render
+        }
+
+        // D3.js latency chart
+        function createLatencyChart() {
+            const data = [
+                { label: 'Direct', min: 10, avg: 50, max: 80 },
+                { label: 'VPN Tunneled', min: 100, avg: 180, max: 300 }
+            ];
+            
+            const width = 600;
+            const height = 250;
+            const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+
+            const svg = d3.select("#latency-chart")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+            
+            const x = d3.scaleBand()
+                .domain(data.map(d => d.label))
+                .range([0, width])
+                .padding(0.4);
+
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).tickSize(0));
+            
+            const y = d3.scaleLinear()
+                .domain([0, 400])
+                .range([height, 0]);
+
+            const yAxis = svg.append("g")
+                .call(d3.axisLeft(y).ticks(5).tickSizeOuter(0));
+
+            const colors = {
+                min: "#10b981",
+                avg: "#f59e0b",
+                max: "#ef4444"
+            };
+
+            const barWidth = x.bandwidth() / 3;
+
+            // Min latency bars
+            svg.selectAll(".bar-min")
+                .data(data)
+                .enter().append("rect")
+                .attr("x", d => x(d.label))
+                .attr("y", d => y(d.min))
+                .attr("width", barWidth)
+                .attr("height", d => height - y(d.min))
+                .attr("fill", colors.min);
+
+            // Avg latency bars
+            svg.selectAll(".bar-avg")
+                .data(data)
+                .enter().append("rect")
+                .attr("x", d => x(d.label) + barWidth)
+                .attr("y", d => y(d.avg))
+                .attr("width", barWidth)
+                .attr("height", d => height - y(d.avg))
+                .attr("fill", colors.avg);
+
+            // Max latency bars
+            svg.selectAll(".bar-max")
+                .data(data)
+                .enter().append("rect")
+                .attr("x", d => x(d.label) + 2 * barWidth)
+                .attr("y", d => y(d.max))
+                .attr("width", barWidth)
+                .attr("height", d => height - y(d.max))
+                .attr("fill", colors.max);
+
+            svg.append("circle").attr("cx",width-180).attr("cy",0).attr("r", 6).style("fill", colors.min)
+            svg.append("circle").attr("cx",width-180).attr("cy",20).attr("r", 6).style("fill", colors.avg)
+            svg.append("circle").attr("cx",width-180).attr("cy",40).attr("r", 6).style("fill", colors.max)
+            svg.append("text").attr("x", width-170).attr("y", 0).text("Minimum").style("font-size", "15px").attr("alignment-baseline","middle")
+            svg.append("text").attr("x", width-170).attr("y", 20).text("Rata-rata").style("font-size", "15px").attr("alignment-baseline","middle")
+            svg.append("text").attr("x", width-170).attr("y", 40).text("Maksimum").style("font-size", "15px").attr("alignment-baseline","middle")
+        }
+        
+        // Initial setup on window load
+        window.onload = function() {
+            createComparisonChart();
+            createNetworkTopology();
+            createLatencyChart();
+        }
+    </script>
+</body>
+</html>
