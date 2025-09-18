@@ -1353,6 +1353,7 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
         function copyCode(id) {
             const codeElement = document.getElementById(id);
             if (!codeElement) return;
+
             const code = codeElement.innerText;
             const textarea = document.createElement('textarea');
             textarea.value = code;
@@ -1361,8 +1362,16 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
             document.execCommand('copy');
             document.body.removeChild(textarea);
 
-            const container = codeElement.closest('.code-block');
-            const button = container ? container.querySelector('.copy-btn') : null;
+            const container = typeof codeElement.closest === 'function' ? codeElement.closest('.code-block') : null;
+            let button = container ? container.querySelector('.copy-btn') : null;
+
+            if (!button) {
+                button = Array.from(document.querySelectorAll('.copy-btn')).find(btn => {
+                    const onclickValue = btn.getAttribute('onclick') || '';
+                    return onclickValue.includes(`copyCode('${id}')`) || onclickValue.includes(`copyCode(\"${id}\")`);
+                }) || null;
+            }
+
             if (button) {
                 const originalText = button.innerText;
                 button.innerText = 'Tersalin!';
