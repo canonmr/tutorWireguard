@@ -1926,20 +1926,36 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
                 { name: 'IPSec', performance: 75, simplicity: 40, security: 95 }
             ];
 
-            const width = 700;
-            const height = 250;
-            const margin = { top: 20, right: 30, bottom: 40, left: 50 };
-            
-            const svg = d3.select("#vpn-comparison")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
+            const svgElement = d3.select("#vpn-comparison");
+            const containerNode = svgElement.node();
+            if (!containerNode) return;
+
+            const parentWidth = containerNode.parentElement ? containerNode.parentElement.clientWidth : containerNode.clientWidth;
+            if (!parentWidth) return;
+
+            const margin = { top: 20, right: 24, bottom: 40, left: 50 };
+            const height = 260;
+            const width = Math.max(parentWidth - margin.left - margin.right, 0);
+            const totalWidth = width + margin.left + margin.right;
+            const totalHeight = height + margin.top + margin.bottom;
+
+            svgElement.selectAll("*").remove();
+            svgElement
+                .attr("width", "100%")
+                .attr("height", totalHeight)
+                .attr("viewBox", `0 0 ${totalWidth} ${totalHeight}`)
+                .attr("preserveAspectRatio", "xMidYMid meet");
+
+            const svg = svgElement
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
 
             const x = d3.scaleBand()
                 .domain(data.map(d => d.name))
                 .range([0, width])
-                .padding(0.2);
+                .padding(width < 420 ? 0.3 : 0.2);
+
+            const tickFontSize = width < 360 ? "12px" : "14px";
 
             svg.append("g")
                 .attr("transform", `translate(0,${height})`)
@@ -1947,22 +1963,24 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
                 .selectAll("text")
                 .attr("transform", "translate(0,10)")
                 .style("text-anchor", "middle")
-                .style("font-size", "14px");
-            
+                .style("font-size", tickFontSize);
+
             const y = d3.scaleLinear()
                 .domain([0, 100])
                 .range([height, 0]);
 
-            const yAxis = svg.append("g")
+            svg.append("g")
                 .call(d3.axisLeft(y).ticks(5).tickSizeOuter(0));
-            
+
+            const barWidth = x.bandwidth() / 3;
+
             svg.selectAll(".bar-performance")
                 .data(data)
                 .enter().append("rect")
                 .attr("class", "bar-performance")
                 .attr("x", d => x(d.name))
                 .attr("y", d => y(d.performance))
-                .attr("width", x.bandwidth() / 3)
+                .attr("width", barWidth)
                 .attr("height", d => height - y(d.performance))
                 .attr("fill", "#3b82f6")
                 .attr("rx", 5)
@@ -1972,9 +1990,9 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
                 .data(data)
                 .enter().append("rect")
                 .attr("class", "bar-simplicity")
-                .attr("x", d => x(d.name) + x.bandwidth() / 3)
+                .attr("x", d => x(d.name) + barWidth)
                 .attr("y", d => y(d.simplicity))
-                .attr("width", x.bandwidth() / 3)
+                .attr("width", barWidth)
                 .attr("height", d => height - y(d.simplicity))
                 .attr("fill", "#60a5fa")
                 .attr("rx", 5)
@@ -1984,20 +2002,41 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
                 .data(data)
                 .enter().append("rect")
                 .attr("class", "bar-security")
-                .attr("x", d => x(d.name) + (x.bandwidth() / 3) * 2)
+                .attr("x", d => x(d.name) + (barWidth * 2))
                 .attr("y", d => y(d.security))
-                .attr("width", x.bandwidth() / 3)
+                .attr("width", barWidth)
                 .attr("height", d => height - y(d.security))
                 .attr("fill", "#93c5fd")
                 .attr("rx", 5)
                 .attr("ry", 5);
 
-            svg.append("circle").attr("cx",width-180).attr("cy",0).attr("r", 6).style("fill", "#3b82f6")
-            svg.append("circle").attr("cx",width-180).attr("cy",20).attr("r", 6).style("fill", "#60a5fa")
-            svg.append("circle").attr("cx",width-180).attr("cy",40).attr("r", 6).style("fill", "#93c5fd")
-            svg.append("text").attr("x", width-170).attr("y", 0).text("Performa").style("font-size", "15px").attr("alignment-baseline","middle")
-            svg.append("text").attr("x", width-170).attr("y", 20).text("Kemudahan Konfigurasi").style("font-size", "15px").attr("alignment-baseline","middle")
-            svg.append("text").attr("x", width-170).attr("y", 40).text("Keamanan").style("font-size", "15px").attr("alignment-baseline","middle")
+            const legendData = [
+                { label: 'Performa', color: '#3b82f6' },
+                { label: 'Kemudahan Konfigurasi', color: '#60a5fa' },
+                { label: 'Keamanan', color: '#93c5fd' }
+            ];
+
+            const legendOffsetX = Math.max(0, width - 160);
+            const legend = svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${legendOffsetX},0)`);
+
+            legendData.forEach((item, index) => {
+                const yOffset = index * 22;
+                legend.append("circle")
+                    .attr("cx", 0)
+                    .attr("cy", yOffset)
+                    .attr("r", 6)
+                    .style("fill", item.color);
+
+                legend.append("text")
+                    .attr("x", 12)
+                    .attr("y", yOffset)
+                    .attr("dy", "0.32em")
+                    .text(item.label)
+                    .style("font-size", tickFontSize)
+                    .style("fill", "#1f2937");
+            });
         }
 
         // D3.js network topology
@@ -2083,31 +2122,51 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
                 { label: 'Direct', min: 10, avg: 50, max: 80 },
                 { label: 'VPN Tunneled', min: 100, avg: 180, max: 300 }
             ];
-            
-            const width = 600;
-            const height = 250;
-            const margin = { top: 20, right: 30, bottom: 40, left: 50 };
 
-            const svg = d3.select("#latency-chart")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
+            const svgElement = d3.select("#latency-chart");
+            const containerNode = svgElement.node();
+            if (!containerNode) return;
+
+            const parentWidth = containerNode.parentElement ? containerNode.parentElement.clientWidth : containerNode.clientWidth;
+            if (!parentWidth) return;
+
+            const margin = { top: 20, right: 24, bottom: 40, left: 50 };
+            const height = 260;
+            const width = Math.max(parentWidth - margin.left - margin.right, 0);
+            const totalWidth = width + margin.left + margin.right;
+            const totalHeight = height + margin.top + margin.bottom;
+
+            svgElement.selectAll("*").remove();
+            svgElement
+                .attr("width", "100%")
+                .attr("height", totalHeight)
+                .attr("viewBox", `0 0 ${totalWidth} ${totalHeight}`)
+                .attr("preserveAspectRatio", "xMidYMid meet");
+
+            const svg = svgElement
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
-            
+
             const x = d3.scaleBand()
                 .domain(data.map(d => d.label))
                 .range([0, width])
-                .padding(0.4);
+                .padding(width < 420 ? 0.35 : 0.4);
+
+            const tickFontSize = width < 360 ? "12px" : "14px";
 
             svg.append("g")
                 .attr("transform", `translate(0,${height})`)
-                .call(d3.axisBottom(x).tickSize(0));
-            
+                .call(d3.axisBottom(x).tickSize(0))
+                .selectAll("text")
+                .attr("transform", "translate(0,10)")
+                .style("text-anchor", "middle")
+                .style("font-size", tickFontSize);
+
             const y = d3.scaleLinear()
                 .domain([0, 400])
                 .range([height, 0]);
 
-            const yAxis = svg.append("g")
+            svg.append("g")
                 .call(d3.axisLeft(y).ticks(5).tickSizeOuter(0));
 
             const colors = {
@@ -2118,42 +2177,69 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
 
             const barWidth = x.bandwidth() / 3;
 
-            // Min latency bars
             svg.selectAll(".bar-min")
                 .data(data)
                 .enter().append("rect")
+                .attr("class", "bar-min")
                 .attr("x", d => x(d.label))
                 .attr("y", d => y(d.min))
                 .attr("width", barWidth)
                 .attr("height", d => height - y(d.min))
-                .attr("fill", colors.min);
+                .attr("fill", colors.min)
+                .attr("rx", 4)
+                .attr("ry", 4);
 
-            // Avg latency bars
             svg.selectAll(".bar-avg")
                 .data(data)
                 .enter().append("rect")
+                .attr("class", "bar-avg")
                 .attr("x", d => x(d.label) + barWidth)
                 .attr("y", d => y(d.avg))
                 .attr("width", barWidth)
                 .attr("height", d => height - y(d.avg))
-                .attr("fill", colors.avg);
+                .attr("fill", colors.avg)
+                .attr("rx", 4)
+                .attr("ry", 4);
 
-            // Max latency bars
             svg.selectAll(".bar-max")
                 .data(data)
                 .enter().append("rect")
+                .attr("class", "bar-max")
                 .attr("x", d => x(d.label) + 2 * barWidth)
                 .attr("y", d => y(d.max))
                 .attr("width", barWidth)
                 .attr("height", d => height - y(d.max))
-                .attr("fill", colors.max);
+                .attr("fill", colors.max)
+                .attr("rx", 4)
+                .attr("ry", 4);
 
-            svg.append("circle").attr("cx",width-180).attr("cy",0).attr("r", 6).style("fill", colors.min)
-            svg.append("circle").attr("cx",width-180).attr("cy",20).attr("r", 6).style("fill", colors.avg)
-            svg.append("circle").attr("cx",width-180).attr("cy",40).attr("r", 6).style("fill", colors.max)
-            svg.append("text").attr("x", width-170).attr("y", 0).text("Minimum").style("font-size", "15px").attr("alignment-baseline","middle")
-            svg.append("text").attr("x", width-170).attr("y", 20).text("Rata-rata").style("font-size", "15px").attr("alignment-baseline","middle")
-            svg.append("text").attr("x", width-170).attr("y", 40).text("Maksimum").style("font-size", "15px").attr("alignment-baseline","middle")
+            const legendData = [
+                { label: 'Minimum', color: colors.min },
+                { label: 'Rata-rata', color: colors.avg },
+                { label: 'Maksimum', color: colors.max }
+            ];
+
+            const legendOffsetX = Math.max(0, width - 160);
+            const legend = svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${legendOffsetX},0)`);
+
+            legendData.forEach((item, index) => {
+                const yOffset = index * 22;
+                legend.append("circle")
+                    .attr("cx", 0)
+                    .attr("cy", yOffset)
+                    .attr("r", 6)
+                    .style("fill", item.color);
+
+                legend.append("text")
+                    .attr("x", 12)
+                    .attr("y", yOffset)
+                    .attr("dy", "0.32em")
+                    .text(item.label)
+                    .style("font-size", tickFontSize)
+                    .style("fill", "#1f2937");
+            });
         }
         
         // Initial setup on window load
@@ -2163,6 +2249,15 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
             createNetworkTopology();
             createLatencyChart();
         }
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                createComparisonChart();
+                createLatencyChart();
+            }, 200);
+        });
     </script>
 </body>
 </html>
