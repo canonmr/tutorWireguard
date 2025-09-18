@@ -755,34 +755,376 @@ AllowedIPs = 10.8.0.0/24, 192.168.110.0/24</span></code></pre>
                 </div>
                 <div class="mt-4 prose max-w-none">
                     <h3>Testing dan Verifikasi</h3>
+                    <p>Lakukan uji berlapis untuk memastikan konektivitas antarlokasi stabil sebelum melanjutkan ke produksi.</p>
                     <div class="code-block mb-4">
                         <h4>Test Konektivitas dari Mikrotik</h4>
                         <pre><code><span id="code-mikrotik-test">/ping 192.168.113.1 count=5
 /tool traceroute address=192.168.113.1</span></code></pre>
                         <button class="copy-btn" onclick="copyCode('code-mikrotik-test')">Salin</button>
                     </div>
-                    <h3>Troubleshooting</h3>
-                    <p>Jika Anda mengalami masalah, gunakan perintah diagnostik berikut:</p>
-                    <div class="code-block mb-4">
-                        <h4>Peer Tidak Terhubung ke VPS</h4>
-                        <pre><code><span id="code-troubleshoot-1"># Di VPS
+                    <div class="not-prose">
+                        <div class="info-card bg-blue-50 border-l-4 border-blue-500 shadow-sm">
+                            <h4 class="text-lg font-semibold text-blue-700">Ringkasan Testing Bertahap</h4>
+                            <div class="overflow-x-auto mt-4">
+                                <table class="min-w-full divide-y divide-blue-200 text-sm">
+                                    <thead class="bg-blue-100 text-blue-800">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left font-semibold">Tahap</th>
+                                            <th class="px-4 py-2 text-left font-semibold">Fokus</th>
+                                            <th class="px-4 py-2 text-left font-semibold">Perintah Utama</th>
+                                            <th class="px-4 py-2 text-left font-semibold">Ekspektasi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-blue-100 text-gray-700">
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold text-gray-900">Langkah 1 – VPS ↔ Mikrotik</td>
+                                            <td class="px-4 py-3">Validasi tunnel aktif di kedua arah</td>
+                                            <td class="px-4 py-3">
+                                                docker exec wg-easy ping -c 5 10.8.0.2<br>
+                                                docker exec wg-easy ping -c 5 10.8.0.4<br>
+                                                /ping 10.8.0.1 count=5
+                                            </td>
+                                            <td class="px-4 py-3">0% packet loss dan latency wajar (50-300ms)</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold text-gray-900">Langkah 2 – Site-to-Site Gateway</td>
+                                            <td class="px-4 py-3">Pastikan rute antar gateway telah aktif</td>
+                                            <td class="px-4 py-3">
+                                                /ping 192.168.113.1 count=5<br>
+                                                /ping 192.168.110.1 count=5
+                                            </td>
+                                            <td class="px-4 py-3">Gateway saling merespons tanpa packet loss</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold text-gray-900">Langkah 3 – Device-to-Device</td>
+                                            <td class="px-4 py-3">Konfirmasi host LAN lintas lokasi dapat terhubung</td>
+                                            <td class="px-4 py-3">
+                                                ping 192.168.113.10<br>
+                                                ping 192.168.110.10
+                                            </td>
+                                            <td class="px-4 py-3">Host tujuan reachable dengan latency stabil</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold text-gray-900">Langkah 4 – Status &amp; Monitoring</td>
+                                            <td class="px-4 py-3">Pantau handshake dan rute secara real-time</td>
+                                            <td class="px-4 py-3">
+                                                docker exec wg-easy wg show<br>
+                                                /interface wireguard peers print detail
+                                            </td>
+                                            <td class="px-4 py-3">Latest handshake &lt; 2 menit, traffic RX/TX bertambah</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <h3>Troubleshooting Terstruktur</h3>
+                    <p>Telusuri kasus sesuai gejala berikut untuk mempercepat diagnosis dan remediasi.</p>
+                    <div class="not-prose space-y-4">
+                        <details class="group bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                            <summary class="flex items-center justify-between cursor-pointer text-blue-600 font-semibold">
+                                <span>Kasus 1: Peer Tidak Terhubung ke VPS</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-blue-500 transition-transform group-open:-rotate-180">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </summary>
+                            <div class="mt-4 space-y-4 text-gray-700">
+                                <div>
+                                    <h4 class="font-semibold text-gray-800">Gejala</h4>
+                                    <ul class="list-disc ml-6 space-y-1">
+                                        <li>Tidak ada handshake di <code>wg show</code></li>
+                                        <li>Ping ke 10.8.0.1 dari Mikrotik gagal</li>
+                                        <li>Status peer "not connected" di wg-easy</li>
+                                    </ul>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Diagnosis Cepat</h4>
+                                    <pre><code><span id="code-troubleshoot1-diagnosis"># Di VPS - cek apakah peer terlihat
 docker exec wg-easy wg show
 
-# Di Mikrotik
-/interface wireguard peers print detail</span></code></pre>
-                        <button class="copy-btn" onclick="copyCode('code-troubleshoot-1')">Salin</button>
-                    </div>
-                    <div class="code-block mb-4">
-                        <h4>Ping ke VPS Berhasil tapi Site-to-Site Gagal</h4>
-                        <pre><code><span id="code-troubleshoot-2"># Cek routing di VPS container
-docker exec wg-easy ip route show</span></code></pre>
-                        <button class="copy-btn" onclick="copyCode('code-troubleshoot-2')">Salin</button>
+# Di Mikrotik - cek peer configuration
+/interface wireguard peers print detail
+
+# Cek firewall VPS
+ufw status</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot1-diagnosis')">Salin</button>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Solusi</h4>
+                                    <pre><code><span id="code-troubleshoot1-solusi"># Buka port Wireguard di VPS
+sudo ufw allow 51820/udp
+
+# Restart interface Wireguard di Mikrotik
+/interface wireguard disable wg-site2site
+/interface wireguard enable wg-site2site
+
+# Verifikasi endpoint address dan port
+/interface wireguard peers print</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot1-solusi')">Salin</button>
+                                </div>
+                            </div>
+                        </details>
+                        <details class="group bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                            <summary class="flex items-center justify-between cursor-pointer text-blue-600 font-semibold">
+                                <span>Kasus 2: Handshake Berhasil tapi Ping ke VPS Gagal</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-blue-500 transition-transform group-open:-rotate-180">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </summary>
+                            <div class="mt-4 space-y-4 text-gray-700">
+                                <div>
+                                    <h4 class="font-semibold text-gray-800">Gejala</h4>
+                                    <ul class="list-disc ml-6 space-y-1">
+                                        <li>Latest handshake muncul, tetapi transfer data 0</li>
+                                        <li>Ping ke 10.8.0.1 timeout</li>
+                                        <li>Interface Wireguard terlihat up</li>
+                                    </ul>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Diagnosis Cepat</h4>
+                                    <pre><code><span id="code-troubleshoot2-diagnosis"># Cek routing di Mikrotik
+/ip route print where gateway=wg-site2site
+
+# Cek IP address Wireguard interface
+/ip address print where interface=wg-site2site
+
+# Cek firewall rules
+/ip firewall filter print where chain=forward</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot2-diagnosis')">Salin</button>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Solusi</h4>
+                                    <pre><code><span id="code-troubleshoot2-solusi"># Pastikan IP interface benar
+/ip address print where interface=wg-site2site
+
+# Tambahkan route eksplisit bila perlu
+/ip route add dst-address=10.8.0.1/32 gateway=wg-site2site
+
+# Pastikan firewall mengizinkan traffic Wireguard
+/ip firewall filter print where in-interface=wg-site2site</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot2-solusi')">Salin</button>
+                                </div>
+                            </div>
+                        </details>
+                        <details class="group bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                            <summary class="flex items-center justify-between cursor-pointer text-blue-600 font-semibold">
+                                <span>Kasus 3: Mikrotik ↔ Mikrotik Berhasil, tetapi Site-to-Site Gagal</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-blue-500 transition-transform group-open:-rotate-180">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </summary>
+                            <div class="mt-4 space-y-4 text-gray-700">
+                                <div>
+                                    <h4 class="font-semibold text-gray-800">Gejala</h4>
+                                    <ul class="list-disc ml-6 space-y-1">
+                                        <li>Ping 10.8.0.2 ↔ 10.8.0.4 berhasil</li>
+                                        <li>Ping 192.168.110.1 ↔ 192.168.113.1 gagal</li>
+                                        <li>Routing di VPS belum lengkap</li>
+                                    </ul>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Diagnosis Cepat</h4>
+                                    <pre><code><span id="code-troubleshoot3-diagnosis"># Cek routing di VPS container
+docker exec wg-easy ip route show
+
+# Pastikan ada route ke subnet lokal
+# 192.168.110.0/24 via 10.8.0.2
+# 192.168.113.0/24 via 10.8.0.4</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot3-diagnosis')">Salin</button>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Solusi</h4>
+                                    <pre><code><span id="code-troubleshoot3-solusi"># Tambahkan route manual di VPS
+docker exec wg-easy ip route add 192.168.110.0/24 via 10.8.0.2
+docker exec wg-easy ip route add 192.168.113.0/24 via 10.8.0.4
+
+# Verifikasi dan uji ping dari VPS
+docker exec wg-easy ip route show
+docker exec wg-easy ping -c 3 192.168.110.1
+docker exec wg-easy ping -c 3 192.168.113.1</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot3-solusi')">Salin</button>
+                                </div>
+                            </div>
+                        </details>
+                        <details class="group bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                            <summary class="flex items-center justify-between cursor-pointer text-blue-600 font-semibold">
+                                <span>Kasus 4: Koneksi Tidak Stabil atau Sering Putus</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-blue-500 transition-transform group-open:-rotate-180">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </summary>
+                            <div class="mt-4 space-y-4 text-gray-700">
+                                <div>
+                                    <h4 class="font-semibold text-gray-800">Gejala</h4>
+                                    <ul class="list-disc ml-6 space-y-1">
+                                        <li>Handshake kadang hilang</li>
+                                        <li>Ping success rate &lt; 90%</li>
+                                        <li>Koneksi drop secara berkala</li>
+                                    </ul>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Diagnosis Cepat</h4>
+                                    <pre><code><span id="code-troubleshoot4-diagnosis"># Pantau handshake
+docker exec wg-easy watch -n 5 'wg show'
+
+# Cek persistent keepalive
+/interface wireguard peers print detail
+
+# Monitor variasi latency
+/ping 10.8.0.1 count=50</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot4-diagnosis')">Salin</button>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Solusi</h4>
+                                    <pre><code><span id="code-troubleshoot4-solusi"># Set keepalive lebih agresif
+/interface wireguard peers set 0 persistent-keepalive=15s
+
+# Evaluasi MTU
+/interface wireguard set wg-site2site mtu=1280
+/ping 10.8.0.1 size=1400 count=10
+/ping 10.8.0.1 size=1200 count=10
+
+# Cek kualitas koneksi ISP
+/ping 8.8.8.8 count=100 interval=1</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot4-solusi')">Salin</button>
+                                </div>
+                            </div>
+                        </details>
+                        <details class="group bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                            <summary class="flex items-center justify-between cursor-pointer text-blue-600 font-semibold">
+                                <span>Kasus 5: Performance Issues (Latency Tinggi/Throughput Rendah)</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-blue-500 transition-transform group-open:-rotate-180">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </summary>
+                            <div class="mt-4 space-y-4 text-gray-700">
+                                <div>
+                                    <h4 class="font-semibold text-gray-800">Gejala</h4>
+                                    <ul class="list-disc ml-6 space-y-1">
+                                        <li>Latency &gt; 500 ms secara konsisten</li>
+                                        <li>Throughput &lt; 10% dari bandwidth</li>
+                                        <li>Packet loss tinggi</li>
+                                    </ul>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Diagnosis Cepat</h4>
+                                    <pre><code><span id="code-troubleshoot5-diagnosis"># Bandingkan baseline internet
+/ping 8.8.8.8 count=20
+
+# Bandingkan kinerja tunnel
+/ping 10.8.0.1 count=20
+
+# Uji throughput
+/tool bandwidth-test address=192.168.113.1 protocol=tcp</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot5-diagnosis')">Salin</button>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Solusi</h4>
+                                    <pre><code><span id="code-troubleshoot5-solusi"># Optimalkan MTU
+/interface wireguard set wg-site2site mtu=1420
+
+# Pantau resource VPS
+docker stats wg-easy
+
+# Evaluasi lokasi/provider VPS
+# Lakukan latency test ke region lain
+
+# Implementasi QoS (opsional)
+/queue simple add target=wg-site2site max-limit=50M/50M</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot5-solusi')">Salin</button>
+                                </div>
+                            </div>
+                        </details>
+                        <details class="group bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                            <summary class="flex items-center justify-between cursor-pointer text-blue-600 font-semibold">
+                                <span>Kasus 6: Konflik Firewall dengan Hotspot atau Rule Existing</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-blue-500 transition-transform group-open:-rotate-180">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </summary>
+                            <div class="mt-4 space-y-4 text-gray-700">
+                                <div>
+                                    <h4 class="font-semibold text-gray-800">Gejala</h4>
+                                    <ul class="list-disc ml-6 space-y-1">
+                                        <li>User hotspot tidak bisa melewati tunnel</li>
+                                        <li>Rule firewall existing memblokir traffic</li>
+                                        <li>Ada drop rule dinamis yang aktif</li>
+                                    </ul>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Diagnosis Cepat</h4>
+                                    <pre><code><span id="code-troubleshoot6-diagnosis"># Lihat urutan firewall
+/ip firewall filter print
+
+# Identifikasi rule hotspot
+/ip firewall filter print where hotspot!=
+
+# Temukan rule drop yang konflik
+/ip firewall filter print where action=drop</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot6-diagnosis')">Salin</button>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Solusi</h4>
+                                    <pre><code><span id="code-troubleshoot6-solusi"># Susun ulang prioritas firewall
+/ip firewall filter move [rule-number] destination=[new-position]
+
+# Tambahkan allow rule khusus Wireguard
+/ip firewall filter add action=accept chain=forward src-address=10.8.0.0/24 place-before=0
+/ip firewall filter add action=accept chain=forward dst-address=10.8.0.0/24 place-before=0
+
+# Bypass hotspot untuk traffic Wireguard
+/ip firewall nat add action=accept chain=hotspot src-address=10.8.0.0/24 place-before=0</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot6-solusi')">Salin</button>
+                                </div>
+                            </div>
+                        </details>
+                        <details class="group bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                            <summary class="flex items-center justify-between cursor-pointer text-blue-600 font-semibold">
+                                <span>Kasus 7: Permasalahan DNS</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-blue-500 transition-transform group-open:-rotate-180">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </summary>
+                            <div class="mt-4 space-y-4 text-gray-700">
+                                <div>
+                                    <h4 class="font-semibold text-gray-800">Gejala</h4>
+                                    <ul class="list-disc ml-6 space-y-1">
+                                        <li>Ping IP berhasil tetapi hostname gagal</li>
+                                        <li>Resolusi DNS lambat</li>
+                                        <li>Terjadi DNS leak</li>
+                                    </ul>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Diagnosis Cepat</h4>
+                                    <pre><code><span id="code-troubleshoot7-diagnosis"># Uji resolusi DNS umum
+/ping google.com
+/ping google.com interface=wg-site2site
+
+# Tinjau konfigurasi DNS
+/ip dns print</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot7-diagnosis')">Salin</button>
+                                </div>
+                                <div class="code-block">
+                                    <h4>Solusi</h4>
+                                    <pre><code><span id="code-troubleshoot7-solusi"># Set DNS server melalui Wireguard
+# Update konfigurasi client dengan DNS yang benar
+
+# Aktifkan DNS forwarding
+/ip dns set allow-remote-requests=yes servers=1.1.1.1,8.8.8.8
+
+# Tambahkan DNS lokal untuk hostname internal
+/ip dns static add name=lokasi-cabang address=192.168.113.1</span></code></pre>
+                                    <button class="copy-btn" onclick="copyCode('code-troubleshoot7-solusi')">Salin</button>
+                                </div>
+                            </div>
+                        </details>
                     </div>
                     <h3>Monitoring dan Maintenance</h3>
-                    <p>Automasi monitoring adalah kunci untuk memastikan stabilitas. Gunakan skrip-skrip berikut untuk memantau status, bandwidth, dan latensi secara rutin. </p>
-                    <div class="code-block mb-4">
-                        <h4>Skrip Health Check Harian</h4>
-                        <pre><code><span id="code-health-check">#!/bin/bash
+                    <p>Automasi monitoring adalah kunci untuk memastikan stabilitas. Gunakan skrip-skrip berikut untuk memantau status, bandwidth, dan latensi secara rutin.</p>
+                    <div class="not-prose space-y-6">
+                        <div class="code-block">
+                            <h4>Skrip Health Check Harian</h4>
+                            <pre><code><span id="code-health-check">#!/bin/bash
 # File: /opt/scripts/wg-healthcheck.sh
 echo "=== Wireguard Health Check - $(date) ==="
 if docker ps | grep -q wg-easy; then
@@ -797,7 +1139,129 @@ if docker exec wg-easy ping -c 2 10.8.0.2 >/dev/null 2>&1; then
 else
     echo "✗ Lokasi pertama: UNREACHABLE"
 fi</span></code></pre>
-                        <button class="copy-btn" onclick="copyCode('code-health-check')">Salin</button>
+                            <button class="copy-btn" onclick="copyCode('code-health-check')">Salin</button>
+                        </div>
+                        <div class="info-card bg-white border border-gray-200 rounded-xl shadow-sm">
+                            <h4 class="text-lg font-semibold text-blue-600">Jadwal Maintenance Terencana</h4>
+                            <div class="overflow-x-auto mt-4">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-100 text-gray-700">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left font-semibold">Frekuensi</th>
+                                            <th class="px-4 py-2 text-left font-semibold">Aktivitas Kunci</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-100 text-gray-700">
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold text-gray-900">Harian (otomatis)</td>
+                                            <td class="px-4 py-3">
+                                                <ul class="list-disc ml-5 space-y-1">
+                                                    <li>Connectivity health check</li>
+                                                    <li>Monitoring performa dan latency</li>
+                                                    <li>Analisis log untuk anomali</li>
+                                                    <li>Tracking penggunaan bandwidth</li>
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold text-gray-900">Mingguan</td>
+                                            <td class="px-4 py-3">
+                                                <ul class="list-disc ml-5 space-y-1">
+                                                    <li>Backup sistem komprehensif</li>
+                                                    <li>Review update keamanan</li>
+                                                    <li>Analisis tren performa</li>
+                                                    <li>Review kapasitas dan kebutuhan bandwidth</li>
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold text-gray-900">Bulanan</td>
+                                            <td class="px-4 py-3">
+                                                <ul class="list-disc ml-5 space-y-1">
+                                                    <li>Audit keamanan dan hardening</li>
+                                                    <li>Review konfigurasi dan optimasi</li>
+                                                    <li>Evaluasi biaya operasional</li>
+                                                    <li>Pembaruan dokumentasi</li>
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold text-gray-900">Triwulanan</td>
+                                            <td class="px-4 py-3">
+                                                <ul class="list-disc ml-5 space-y-1">
+                                                    <li>Pengujian disaster recovery</li>
+                                                    <li>Penetration testing keamanan</li>
+                                                    <li>Evaluasi pembaruan teknologi</li>
+                                                    <li>Review kebutuhan bisnis</li>
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="info-card bg-white border border-gray-200 rounded-xl shadow-sm">
+                            <h4 class="text-lg font-semibold text-blue-600">Checklist Final Implementasi</h4>
+                            <div class="grid gap-3 md:grid-cols-2 text-gray-700 mt-4">
+                                <label class="flex gap-3 items-start">
+                                    <input type="checkbox" disabled class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                    <span>All connectivity tests passing secara konsisten</span>
+                                </label>
+                                <label class="flex gap-3 items-start">
+                                    <input type="checkbox" disabled class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                    <span>Monitoring dan alerting aktif</span>
+                                </label>
+                                <label class="flex gap-3 items-start">
+                                    <input type="checkbox" disabled class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                    <span>Prosedur backup dan recovery teruji</span>
+                                </label>
+                                <label class="flex gap-3 items-start">
+                                    <input type="checkbox" disabled class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                    <span>Dokumentasi terbaru dan mudah diakses</span>
+                                </label>
+                                <label class="flex gap-3 items-start">
+                                    <input type="checkbox" disabled class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                    <span>Pelatihan pengguna dan SOP support tersedia</span>
+                                </label>
+                                <label class="flex gap-3 items-start">
+                                    <input type="checkbox" disabled class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                    <span>Security hardening telah diterapkan</span>
+                                </label>
+                                <label class="flex gap-3 items-start">
+                                    <input type="checkbox" disabled class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                    <span>Baseline performa terdokumentasi</span>
+                                </label>
+                                <label class="flex gap-3 items-start">
+                                    <input type="checkbox" disabled class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                    <span>Pelacakan biaya dan prosedur change management disetujui</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="info-card bg-white border border-gray-200 rounded-xl shadow-sm">
+                            <h4 class="text-lg font-semibold text-blue-600">Sumber Daya Komunitas &amp; Dukungan</h4>
+                            <div class="grid gap-4 md:grid-cols-2 text-gray-700 mt-4">
+                                <div>
+                                    <h5 class="font-semibold text-gray-900">Official Documentation</h5>
+                                    <ul class="list-disc ml-5 space-y-1">
+                                        <li><a href="https://www.wireguard.com/" class="text-blue-600 hover:underline" target="_blank" rel="noopener">Wireguard Official Docs</a></li>
+                                        <li><a href="https://help.mikrotik.com/" class="text-blue-600 hover:underline" target="_blank" rel="noopener">Mikrotik RouterOS Manual</a></li>
+                                        <li><a href="https://docs.docker.com/" class="text-blue-600 hover:underline" target="_blank" rel="noopener">Docker Documentation</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold text-gray-900">Community &amp; Support Channels</h5>
+                                    <ul class="list-disc ml-5 space-y-1">
+                                        <li><a href="https://forum.mikrotik.com/" class="text-blue-600 hover:underline" target="_blank" rel="noopener">Mikrotik Community Forum</a></li>
+                                        <li><a href="https://www.reddit.com/r/mikrotik/" class="text-blue-600 hover:underline" target="_blank" rel="noopener">Reddit r/mikrotik</a> &amp; <a href="https://www.reddit.com/r/WireGuard/" class="text-blue-600 hover:underline" target="_blank" rel="noopener">r/WireGuard</a></li>
+                                        <li><a href="https://stackoverflow.com/" class="text-blue-600 hover:underline" target="_blank" rel="noopener">Stack Overflow (tag: wireguard, mikrotik)</a></li>
+                                    </ul>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <h5 class="font-semibold text-gray-900">Professional Services</h5>
+                                    <p>Pertimbangkan konsultan profesional untuk deployment berskala besar (&gt;10 site), integrasi kompleks, kebutuhan high availability, atau lingkungan dengan tuntutan compliance tinggi.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
