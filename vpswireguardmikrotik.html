@@ -217,10 +217,129 @@
             border: 1px solid var(--border-soft);
             box-shadow: 0 18px 36px -24px rgba(30, 64, 175, 0.45);
         }
+        .mobile-nav-toggle {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            padding: 0.85rem 1.1rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(37, 99, 235, 0.05));
+            color: #1d4ed8;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+        .mobile-nav-toggle:hover {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(37, 99, 235, 0.08));
+            border-color: rgba(37, 99, 235, 0.45);
+            box-shadow: 0 15px 30px -20px rgba(37, 99, 235, 0.35);
+        }
+        .mobile-nav-toggle:focus-visible {
+            outline: 2px solid rgba(37, 99, 235, 0.35);
+            outline-offset: 4px;
+        }
+        .mobile-nav-toggle svg {
+            width: 20px;
+            height: 20px;
+            color: #1e40af;
+            transition: transform 0.25s ease;
+        }
+        .mobile-nav-toggle[aria-expanded="true"] svg {
+            transform: rotate(180deg);
+        }
+        .table-scroll {
+            position: relative;
+            overflow-x: auto;
+            border-radius: 0.75rem;
+            -webkit-overflow-scrolling: touch;
+        }
+        .table-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+        .table-scroll::-webkit-scrollbar-thumb {
+            background-color: rgba(37, 99, 235, 0.25);
+            border-radius: 9999px;
+        }
         @media (min-width: 1024px) {
             .quick-nav {
                 position: sticky;
                 top: 2rem;
+            }
+        }
+        @media (max-width: 1023px) {
+            .layout-grid {
+                gap: 1.75rem;
+            }
+            .quick-nav {
+                display: none;
+                padding: 1.25rem;
+                box-shadow: 0 16px 35px -28px rgba(15, 23, 42, 0.35);
+            }
+            .quick-nav.open {
+                display: block;
+            }
+            .mobile-nav-toggle {
+                display: inline-flex;
+            }
+        }
+        @media (max-width: 768px) {
+            .hero-inner {
+                padding: 4.5rem 0 3.5rem;
+            }
+            .hero-description {
+                font-size: 1rem;
+            }
+            .hero-meta {
+                grid-template-columns: 1fr;
+            }
+            .progress-tracker {
+                padding: 1.25rem;
+            }
+            .step-card {
+                padding: 1.6rem;
+            }
+            .chart-container {
+                padding: 1.1rem;
+                height: auto;
+            }
+            .diagram-container {
+                padding: 1.1rem;
+                height: auto;
+                min-height: 320px;
+            }
+        }
+        @media (max-width: 640px) {
+            .container {
+                padding: 1rem;
+            }
+            .hero-title {
+                font-size: clamp(2.1rem, 9vw, 2.8rem);
+            }
+            .progress-heading {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .progress-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+            .step-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .tab-buttons {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 0.25rem;
+            }
+            .tab-button {
+                flex: 0 0 auto;
+            }
+            .diagram-container {
+                min-height: 300px;
             }
         }
         .quick-nav h2 {
@@ -626,8 +745,14 @@
     </section>
 
     <main class="container mt-14">
+        <button class="mobile-nav-toggle" type="button" data-mobile-nav-toggle aria-controls="quickNav" aria-expanded="false">
+            <span>Navigasi Cepat</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 9l7 7 7-7" />
+            </svg>
+        </button>
         <div class="layout-grid">
-            <aside class="quick-nav" aria-label="Navigasi cepat">
+            <aside id="quickNav" class="quick-nav" aria-label="Navigasi cepat" role="navigation">
                 <h2>Navigasi Cepat</h2>
                 <ul>
                     <li><a href="#langkah1">Pengenalan &amp; manfaat Wireguard</a></li>
@@ -1254,7 +1379,7 @@ AllowedIPs = 10.8.0.0/24, 192.168.110.0/24</span></code></pre>
                     <div class="not-prose">
                         <div class="info-card bg-blue-50 border-l-4 border-blue-500 shadow-sm">
                             <h4 class="text-lg font-semibold text-blue-700">Ringkasan Testing Bertahap</h4>
-                            <div class="overflow-x-auto mt-4">
+                            <div class="overflow-x-auto table-scroll mt-4">
                                 <table class="min-w-full divide-y divide-blue-200 text-sm">
                                     <thead class="bg-blue-100 text-blue-800">
                                         <tr>
@@ -1632,7 +1757,7 @@ fi</span></code></pre>
                         </div>
                         <div class="info-card bg-white border border-gray-200 rounded-xl shadow-sm">
                             <h4 class="text-lg font-semibold text-blue-600">Jadwal Maintenance Terencana</h4>
-                            <div class="overflow-x-auto mt-4">
+                            <div class="overflow-x-auto table-scroll mt-4">
                                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                                     <thead class="bg-gray-100 text-gray-700">
                                         <tr>
@@ -1916,6 +2041,43 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
                     });
                 });
             });
+        }
+
+        function initMobileNav() {
+            const toggle = document.querySelector('[data-mobile-nav-toggle]');
+            const quickNav = document.getElementById('quickNav');
+
+            if (!toggle || !quickNav) return;
+
+            const setState = expanded => {
+                toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                quickNav.classList.toggle('open', expanded);
+            };
+
+            setState(false);
+
+            toggle.addEventListener('click', () => {
+                const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                setState(!expanded);
+            });
+
+            quickNav.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth < 1024) {
+                        setState(false);
+                    }
+                });
+            });
+
+            const syncWithViewport = () => {
+                if (window.innerWidth >= 1024) {
+                    quickNav.classList.remove('open');
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            };
+
+            syncWithViewport();
+            window.addEventListener('resize', syncWithViewport);
         }
 
         // D3.js chart for VPN comparison
@@ -2245,6 +2407,7 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
         // Initial setup on window load
         window.onload = function() {
             initTabs();
+            initMobileNav();
             createComparisonChart();
             createNetworkTopology();
             createLatencyChart();
