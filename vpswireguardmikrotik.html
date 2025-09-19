@@ -481,12 +481,10 @@
         .step-content {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.5s ease-out;
             padding-top: 1rem;
         }
         .step-content.active {
-            max-height: 5000px; /* Adjusted for full content */
-            transition: max-height 0.7s ease-in;
+            max-height: none;
         }
         .code-block {
             background: linear-gradient(160deg, #0f172a, #1e293b);
@@ -1998,17 +1996,48 @@ docker-compose -f /opt/wireguard/docker-compose.yml up -d</span></code></pre>
             if (!content || !icon) return;
 
             const isOpen = content.classList.contains('active');
+            content.style.transition = content.style.transition || 'max-height 0.5s ease';
 
             if (isOpen) {
-                content.classList.remove('active');
                 content.setAttribute('aria-hidden', 'true');
                 icon.classList.remove('rotate-180');
                 if (header) header.setAttribute('aria-expanded', 'false');
+
+                const currentHeight = content.scrollHeight;
+                content.style.maxHeight = currentHeight + 'px';
+
+                requestAnimationFrame(() => {
+                    content.style.maxHeight = '0px';
+                });
+
+                const handleClose = (event) => {
+                    if (event.target !== content || event.propertyName !== 'max-height') return;
+                    content.classList.remove('active');
+                    content.style.removeProperty('max-height');
+                    content.removeEventListener('transitionend', handleClose);
+                };
+
+                content.addEventListener('transitionend', handleClose);
             } else {
                 content.classList.add('active');
                 content.setAttribute('aria-hidden', 'false');
                 icon.classList.add('rotate-180');
                 if (header) header.setAttribute('aria-expanded', 'true');
+
+                const targetHeight = content.scrollHeight;
+                content.style.maxHeight = '0px';
+
+                requestAnimationFrame(() => {
+                    content.style.maxHeight = targetHeight + 'px';
+                });
+
+                const handleOpen = (event) => {
+                    if (event.target !== content || event.propertyName !== 'max-height') return;
+                    content.style.removeProperty('max-height');
+                    content.removeEventListener('transitionend', handleOpen);
+                };
+
+                content.addEventListener('transitionend', handleOpen);
             }
         }
 
